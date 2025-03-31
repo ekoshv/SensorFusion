@@ -158,7 +158,7 @@ After tuning, it reruns the simulation with the best configuration.
 
 ## 📜 License
 
-MIT License © 2025 Your Name
+MIT License © 2025 Ehsan KhademOlama
 
 ---
 
