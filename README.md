@@ -22,7 +22,7 @@ This repository implements an Error-State Kalman Filter (ESKF) observer designed
 - **Extensive Plots and Error Metrics:** Analyze estimator accuracy through trajectory plots, RMSE, and bias metrics.
 
 ---
-
+![Estimated Position vs Real Position](results/True_vs_Estimated_Pos.png)
 ## 📦 Installation
 
 ```bash
