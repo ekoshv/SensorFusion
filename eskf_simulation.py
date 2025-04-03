@@ -204,7 +204,7 @@ class IMUSimulator:
         self.x_true_hist = x_true_hist
         return x_true_hist
 
-    def simulate_measurements(self, gps_alpha=0.83):
+    def simulate_measurements(self, gps_alpha=0.73):
         """
         Simulates sensor measurements: high-rate gyro/accelerometer and low-rate, delayed GPS.
         """
@@ -410,7 +410,7 @@ class IMUSimulator:
         Returns the RMSE in position.
         """
         self.simulate_true_trajectory()
-        self.simulate_measurements()
+        self.simulate_measurements(gps_alpha=gains['gps_alpha'])
         if use_ESKF:
             self.run_ESKF_with_delay_estimation(gains)
         else:
@@ -633,6 +633,7 @@ class IMUSimulator:
 # ---------------------------
 def objective(trial, params):
     gains = {
+        'gps_alpha': trial.suggest_float('gps_alpha', 0.01, 0.99),
         'gamma_tau': trial.suggest_float('gamma_tau', 1e-3, 1.0, log=True),
         'tau0': trial.suggest_float('tau0', 0.01, 0.5)
     }
@@ -669,7 +670,7 @@ if __name__ == '__main__':
     # 2. Industrial-Grade: Moderate noise and update rates.
     industrial_params = {
         'dt': 0.01,
-        'T_total': 60.0,
+        'T_total': 30.0,
         'gps_rate': 15.0,
         'gps_delay': 0.1,
         'gyro_noise_std': 0.005,
@@ -693,7 +694,7 @@ if __name__ == '__main__':
     params = industrial_params  # Choose the desired parameter cluster
 
     study = optuna.create_study(direction='minimize')
-    study.optimize(lambda trial: objective(trial, params), n_trials=50)
+    study.optimize(lambda trial: objective(trial, params), n_trials=15)
     
     print("Best trial:")
     print(f"  RMSE: {study.best_value:.3f}")
