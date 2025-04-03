@@ -204,7 +204,7 @@ class IMUSimulator:
         self.x_true_hist = x_true_hist
         return x_true_hist
 
-    def simulate_measurements(self, gps_alpha=0.63):
+    def simulate_measurements(self, gps_alpha=0.83):
         """
         Simulates sensor measurements: high-rate gyro/accelerometer and low-rate, delayed GPS.
         """
@@ -669,12 +669,12 @@ if __name__ == '__main__':
     # 2. Industrial-Grade: Moderate noise and update rates.
     industrial_params = {
         'dt': 0.01,
-        'T_total': 20.0,
+        'T_total': 60.0,
         'gps_rate': 15.0,
         'gps_delay': 0.1,
         'gyro_noise_std': 0.005,
         'accel_noise_std': 0.05,
-        'gps_noise_std': 3.5,
+        'gps_noise_std': 2.0,
         'r_true': [0.05, -0.03, 0.10]
     }
 
