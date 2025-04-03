@@ -204,7 +204,7 @@ class IMUSimulator:
         self.x_true_hist = x_true_hist
         return x_true_hist
 
-    def simulate_measurements(self):
+    def simulate_measurements(self, gps_alpha=0.63):
         """
         Simulates sensor measurements: high-rate gyro/accelerometer and low-rate, delayed GPS.
         """
@@ -215,22 +215,30 @@ class IMUSimulator:
         z_gyro = np.zeros((steps, 3))
         z_accel = np.zeros((steps, 3))
         z_gps = np.full((steps, 3), np.nan)
-        
+        z_gps_filtered = np.full((steps, 3), np.nan)
+        previous_z_gps_filtered = np.full((1, 3), 0.0)
         for k in range(steps):
             t = time[k]
-            # Gyroscope measurement
             omega, _, _ = self.true_motion_profile(t)
             z_gyro[k] = omega + np.random.randn(3) * self.gyro_noise_std
-            # Accelerometer measurement
-            z_accel[k] = self.true_a_body(x_true_hist[k], t) + np.random.randn(3) * self.accel_noise_std
-            # GPS measurement with delay (only after delay steps)
+            z_accel[k] = (self.true_a_body(x_true_hist[k], t) +
+                          np.random.randn(3) * self.accel_noise_std)
+            
             if (k % self.gps_update_steps == 0) and (k >= self.gps_delay_steps):
                 pos_true_delayed = x_true_hist[k - self.gps_delay_steps, 7:10]
-                z_gps[k] = pos_true_delayed + np.random.randn(3) * self.gps_noise_std
+                z_gps[k,:] = pos_true_delayed + np.random.randn(3) * self.gps_noise_std
+                if k == self.gps_delay_steps:
+                    z_gps_filtered[k,:] = z_gps[k,:]
+                    previous_z_gps_filtered = z_gps_filtered[k,:]
+                else:
+                    z_gps_filtered[k,:]= (gps_alpha * z_gps[k,:] +
+                                        (1 - gps_alpha) * previous_z_gps_filtered)
+                    previous_z_gps_filtered = z_gps_filtered[k,:]
         
         self.z_gyro = z_gyro
         self.z_accel = z_accel
         self.z_gps = z_gps
+        self.z_gps_filtered = z_gps_filtered
         return z_gyro, z_accel, z_gps
 
     def run_ESKF_with_delay_estimation(self, gains):
@@ -309,7 +317,7 @@ class IMUSimulator:
             P_hist[k] = P
 
             # If a delayed GPS measurement is available:
-            if (not np.isnan(self.z_gps[k, 0])) and (k >= self.gps_delay_steps):
+            if (not np.isnan(self.z_gps_filtered[k, 0])) and (k >= self.gps_delay_steps):
                 # Determine the index corresponding to the current delay estimate.
                 # Clip tau_est/dt between 0 and k to ensure a valid index.
                 delay_steps_est = int(np.clip(tau_est / dt, 0, k))
@@ -320,7 +328,7 @@ class IMUSimulator:
                 P_delayed = P_hist[delayed_index].copy()
 
                 # Measurement: GPS measures position
-                z = self.z_gps[k]
+                z = self.z_gps_filtered[k]
                 p_pred = x_delayed[7:10]
                 y = z - p_pred  # innovation
 
@@ -660,13 +668,13 @@ if __name__ == '__main__':
 
     # 2. Industrial-Grade: Moderate noise and update rates.
     industrial_params = {
-        'dt': 0.005,
+        'dt': 0.01,
         'T_total': 20.0,
-        'gps_rate': 5.0,
+        'gps_rate': 15.0,
         'gps_delay': 0.1,
         'gyro_noise_std': 0.005,
         'accel_noise_std': 0.05,
-        'gps_noise_std': 0.5,
+        'gps_noise_std': 3.5,
         'r_true': [0.05, -0.03, 0.10]
     }
 
